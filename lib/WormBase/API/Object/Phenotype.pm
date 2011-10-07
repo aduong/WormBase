@@ -976,6 +976,40 @@ sub _rnai {
     return \@data_pack;
 }
 
+sub experimental_rnai {
+    my ($self, $begin, $count) = @_;
+    $begin ||= 0;
+
+    my @rnai = $self->object->RNAi;
+    return ([], 0) if $begin > $#rnai;
+
+    my $end = $begin + $count - 1;
+    $end = $#rnai if $#rnai < $end;
+
+    $self->log->debug("EXPERIMENTAL_RNAI: \$begin=$begin; \$count=$count; \$end=$end; ",
+                      "scalar\@rnai=", scalar @rnai);
+
+    my @data = map {
+        $_ = $_->fetch;
+        my $sequence  = $_->Sequence;
+        my $species   = $_->Species;
+        my $genotype  = $_->Genotype;
+        my $treatment = $_->Treatment;
+        my $strain    = $_->Strain;
+        {
+            rnai      => "$_",
+            sequence  => $sequence && "$sequence",
+            species   => $species && "$species",
+            genotype  => $genotype && "$genotype",
+            treatment => $treatment && "$treatment",
+            strain    => $strain && "$strain",
+        }
+        ;
+    } @rnai[$begin..$end];
+
+    return (\@data, scalar @rnai);
+}
+
 sub _get_json_data {
     my ( $self, $tag ) = @_;
     my $result;

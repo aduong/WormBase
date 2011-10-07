@@ -1,38 +1,42 @@
-[%
+      <table class="display" id="table_rnai_by">
+             <thead>
+                <tr>
+                    <th>RNAi</th>
+                    <th>Species</th>
+                    <th>Sequence</th>
+                    <th>Strain</th>
+                    <th>Genotype</th>
+                    <th>Treatment</th>
+                </tr>
+             </thead>
+             <tbody>
+             </tbody>
+      </table>
 
-IF fields.rnai.data.defined;
+      <script type="text/javascript">
+          WB.getDataTables(function() {
+              $jq('#table_rnai_by').dataTable({
+                  "bPaginate"       :   true,
+                  // "sPaginationType"   :   "full_numbers",                  
+                  "bFilter"         :   false,
+                  "bSort"           :   false,
+                  "bInfo"           :   true,
+                  "bProcessing"    :   true,
+                  "bServerSide"     :   true,
+                  "sAjaxSource"     :   "/rest/experimental/phenotype/rnai/[% object.name.data.id %]",
+                  "aoColumns"       :   [
+                      { "mDataProp" : "rnai" },
+                      { "mDataProp" : "species" },
+                      { "mDataProp" : "sequence" },
+                      { "mDataProp" : "strain" },
+                      { "mDataProp" : "genotype" },
+                      { "mDataProp" : "treatment" },
+                  ],
+              });
+          });
+      </script>
 
-    WRAPPER $field_block  title="" key="rnai";
-       '<span class="caveat-emptor">Gene knockdown via RNAi results in the ' 
-               _ tag2link(object.name.data) _ ' phenotype in these experiments.</span>';
-
-	build_data_table (
-		order = [ 
-			'rnai',
-			'species',
-			'sequence',
-			'strain',
-			'genotype',			
-			'treatment'
-			],
-		columns = {				 		
-			rnai => 'RNAi',
-			species => 'Species',
-			sequence => 'Sequence',
-			strain  => 'Strain',
-			genotype => 'Genotype',
-			treatment => 'Treatment'
-			},
-		key = 'rnai');
-    END;	
-
-ELSE;
-
-    '<span class="caveat-emptor">No gene knockdown experiments have noted this phenotype.</span>';
-
-END;
-
-IF fields.rnai_not.data.defined;
+[% IF fields.rnai_not.data.defined;
 
     WRAPPER $field_block  title="" key="rnai_not";
        '<span class="caveat-emptor">Gene knockdown via RNAi DOES NOT result in the ' _ tag2link(object.name.data) _ ' phenotype in these experiments.</span>';

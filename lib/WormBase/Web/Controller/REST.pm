@@ -872,6 +872,8 @@ sub widget_GET {
                : $api->fetch({ class => ucfirst $class, name => $name }));
     # what if there's no object?
 
+    $c->stash->{object}->{name} = $object->name;
+
     # Is this a request for the references widget?
     # Return it (of course, this will ONLY be HTML).
     if ( $widget eq 'references' ) {
