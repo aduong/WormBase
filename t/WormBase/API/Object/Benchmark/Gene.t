@@ -17,16 +17,22 @@ my @object_names = qw(WBGene00000018); # highly linked objects
 
 my $t = WormBase::Test::API::Object->new({
     class => 'Gene',
-    conf_file => 'data/conf/test.conf',
+    conf_file => ['../wormbase.conf', 'data/conf/test.conf'],
 });
 
-# don't want to run compliance checks in this test
+my $widgets_hash = $t->conf->{sections}{species}{gene}{widgets};
 
-my @objects = map { $t->fetch_object_ok({ name => $_ }) } @object_names;
-my @methods = sort grep { !/^_/ }
-              map { $_->name } $t->get_class_specific_methods;
+for my $widget (sort keys %$widgets_hash) {
+    subtest "Widget $widget ok" => sub {
+        my $object = $t->fetch_object_ok({ name => $object_names[0] });
 
-$t->call_method_ok($t->fetch_object_ok({ name => $object_names[0] }), $_)
-    foreach @methods;
+        my @widgets = grep defined, $widgets_hash->{$widget}{fields};
+        @widgets = @{$widgets[0]} if ref $widgets[0];
+
+        for my $field (sort @widgets) {
+            $t->call_method_ok($object, $field);
+        }
+    };
+}
 
 done_testing;
