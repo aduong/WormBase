@@ -171,28 +171,25 @@ B<Response example>
 
 sub sequences {
     my ($self) = @_;
-    
+
     # this part looks suspiciously like it overlaps with _build__segments below...
     my %sequences;
     foreach my $seq (@{$self ~~ '@Sequence'}) {
         my $chrom = $self->_pack_obj($seq->Interpolated_map_position);
         my $map   = $seq->Interpolated_map_position(2);
-	
+
         my ($ref, $start, $end);
         if (my ($coords) = $self->_seq2coords($seq)) {
             ($ref, $start, $end) = @$coords;
         }
-	
-        $sequences{$seq} = $self->_pack_obj(
-            $seq, undef, # $seq and resolve label within _pack_obj
-            start => $start,
-            end   => $end,
-            ref   => $ref,
-            chrom => $chrom,
-            map   => $map && "$map",
-	    );
+
+        my $packed_seq = $self->_pack_obj($seq);
+        @{$packed_seq}{qw(start end ref chrom map)} =
+            ($start, $end, $ref, $chrom, $map && "$map");
+
+        $sequences{$seq} = $packed_seq;
     }
-    
+
     return {
         description => 'sequences associated with this clone',
         data		=> %sequences ? \%sequences : undef,
@@ -261,10 +258,12 @@ B<Response example>
 
 sub lengths {
     my ($self) = @_;
-    my %data = map { $_ => $self ~~ "$_" } qw(Seq_length Gel_length);
+
+    my %data = map { $_ => $self->object->$_  } qw(Seq_length Gel_length);
+
     return {
-	description => 'lengths relevant to this clone',
-	data   	    => %data ? \%data : undef,
+        description => 'lengths relevant to this clone',
+        data   	    => %data ? \%data : undef,
     };
 }
 
@@ -322,14 +321,14 @@ B<Response example>
 
 sub maps {
     my ($self) = @_;
-    
+
     # get Maps from object itself, otherwise try for Maps from Pmap
     my $map = $self ~~ '@Map';
     $map = eval {[$self->object->Pmap->Map] } unless @$map;
-    
+
     return {
-	description => 'maps assigned to this clone',
-	data	    => $map && @$map ? $self->_pack_objects($map) : undef,
+        description => 'maps assigned to this clone',
+        data	    => $map && @$map ? $self->_pack_objects($map) : undef,
     };
 }
 
@@ -394,8 +393,8 @@ sub sequence_status {
     # eval is in scalar context to force an undef instead of empty list
     my %status = map { $_ => scalar eval {$_->right->name}} @{$self ~~ '@Sequence_status'};
     return {
-	description => 'sequencing status of clone',
-	data	    => %status ? \%status : undef,
+        description => 'sequencing status of clone',
+        data	    => %status ? \%status : undef,
     };
 }
 
@@ -456,8 +455,8 @@ sub canonical_for {
 
     my $canonical = $self->_pack_objects($self ~~ '@Canonical_for');
     return {
-	description => 'clones that the requested clone is a canonical representative of',
-	data	    => %$canonical ? $canonical : undef,
+        description => 'clones that the requested clone is a canonical representative of',
+        data	    => %$canonical ? $canonical : undef,
     };
 }
 
@@ -518,15 +517,15 @@ sub canonical_parent {
 
     # the following abuses the list context behaviour of the autogen'd accessors
     # i.e. no data results in ()
-    my @canonical_parent = map {$self->_pack_obj($_)}  (
+    my @canonical_parent = map { $self->_pack_obj($_) }  (
         $obj->Approximate_match_to,
         $obj->Exact_match_to,
         $obj->Funny_match_to,
     );
 
     return {
-	description => 'canonical parent for clone',
-	data	    => @canonical_parent ? \@canonical_parent : undef,
+        description => 'canonical parent for clone',
+        data	    => @canonical_parent ? \@canonical_parent : undef,
     }
 }
 
@@ -585,12 +584,15 @@ sub screened_positive {
     my ($self) = @_;
 
     my %weaks = map {$_ => 1} @{$self ~~ '@Pos_probe_weak'};
-    my %data = map { $_ => $self->_pack_obj($_, undef, weak => $weaks{$_}) }
-    $self->object->Positive(2);
+    my %data = map {
+        my $packed_obj = $self->_pack_obj($_);
+        $packed_obj->{weak} = $weaks{$_};
+        $_ => $packed_obj;
+    } $self->object->Positive(2);
 
     return {
-	description => 'entities shown to be contained within this clone',
-	data		=> %data ? \%data : undef,
+        description => 'entities shown to be contained within this clone',
+        data		=> %data ? \%data : undef,
     };
 }
 
@@ -651,8 +653,8 @@ sub screened_negative {
 
     my $data = $self->_pack_objects([$self->object->Negative(2)]);
     return {
-	description => 'entities shown to NOT be contained within the requested clone',
-	data	    => %$data ? $data : undef,
+        description => 'entities shown to NOT be contained within the requested clone',
+        data	    => %$data ? $data : undef,
     };
 }
 
@@ -713,8 +715,8 @@ sub gridded_on {
 
     my $data = $self->_pack_objects($self ~~ '@Gridded');
     return {
-	description => 'grid this clone was gridded on during fingerprinting',
-	data	    => %$data ? $data : undef,
+        description => 'grid this clone was gridded on during fingerprinting',
+        data	    => %$data ? $data : undef,
     };
 }
 
@@ -821,9 +823,6 @@ sub physical_picture { # TODO (TH: And probably not necessary)
         data        => 'NOT IMPLEMENTED',
     };
 }
-
-
-
 
 __PACKAGE__->meta->make_immutable;
 

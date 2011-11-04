@@ -2653,25 +2653,29 @@ sub polymorphism_assays {
 
         my $dna;
 
-        if (my $pcr_node = first {$_ eq $pcr_product} $sequence->PCR_product) {{
-            my ($start, $stop) = $pcr_node->row or last;
-            my $gffdb = $self->gff_dsn or last;
-            my ($segment) = eval { $gffdb->segment(
-                -name   => $sequence,
-                -offset => $start,
-                -length => ($stop-$start)
-            ) } or last;
+        if (my $pcr_node = first {$_ eq $pcr_product} $sequence->PCR_product) {
+            {
+                my ($start, $stop) = $pcr_node->row or last;
+                my $gffdb = $self->gff_dsn or last;
+                my ($segment) = eval { $gffdb->segment(
+                    -name   => $sequence,
+                    -offset => $start,
+                    -length => ($stop-$start)
+                ) } or last;
 
-            $dna = $segment->dna;
-	    }
-	}
-        $pcr_data{pcr_product} = $self->_pack_obj(
-            $pcr_product, undef, # let _pack_obj resolve label
-            left_oligo     => $left_oligo && "$left_oligo",
-            right_oligo    => $right_oligo && "right_oligo",
-            pcr_conditions => $pcr_conditions && "$pcr_conditions",
-            dna            => $dna && "$dna",
+                $dna = $segment->dna;
+            }
+        }
+
+        my $packed_product = $self->_pack_obj($pcr_product);
+        @{$packed_product}{qw(left_oligo right_oligo pcr_conditions dna)} = (
+            $left_oligo && $left_oligo->name,
+            $right_oligo && $right_oligo->name,
+            $pcr_conditions && $pcr_conditions->name,
+            $dna && $dna->name,
         );
+
+        $pcr_data{pcr_product} = $packed_product;
 
         $data->{$pcr_product} = \%pcr_data;
     }

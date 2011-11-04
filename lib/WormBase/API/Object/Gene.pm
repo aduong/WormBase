@@ -146,10 +146,8 @@ sub _build__phenotypes {
     for my $allele ($object->Allele) {
         my $seq_status = $allele->SeqStatus;
 
-        my $packed_allele = $self->_pack_obj(
-            $allele, undef,
-            boldface => $seq_status ? scalar($seq_status =~ /sequenced/i) : 0,
-        );
+        my $packed_allele = $self->_pack_obj($allele);
+        $packed_allele->{boldface} = $seq_status && $seq_status =~ /sequenced/i;
 
         foreach ($allele->Phenotype) {
             $phenotypes{observed}{$_}{object}        //= $self->_pack_obj($_);
@@ -640,10 +638,12 @@ B<Response example>
 
 sub locus_name {
     my $self   = shift;
-    my $object = $self->object;
-    my $locus  = $object->CGC_name;
-    return { description => 'the locus name (also known as the CGC name) of the gene',
-	     data        => $locus ? $self->_pack_obj($locus->CGC_name_for, "$locus") : undef }
+    my $locus  = $self->object->CGC_name;
+
+    return {
+        description => 'the locus name (also known as the CGC name) of the gene',
+        data        => $locus ? $self->_pack_obj($locus->CGC_name_for, $locus->name) : undef
+    };
 }
 
 
@@ -709,10 +709,12 @@ B<Response example>
 
 sub sequence_name {
     my $self     = shift;
-    my $object   = $self->object;
-    my $sequence = $object->Sequence_name;
-    return { description => 'the primary corresponding sequence name of the gene, if known',
-	     data        => $sequence ? $self->_pack_obj($sequence->Sequence_name_for, "$sequence") : undef };
+    my $sequence = $self->object->Sequence_name;
+
+    return {
+        description => 'the primary corresponding sequence name of the gene, if known',
+        data        => $sequence ? $self->_pack_obj($sequence->Sequence_name_for, "$sequence") : undef
+    };
 }
 
 
@@ -1288,7 +1290,7 @@ sub anatomy_function {
       else{
           my $afn_phenotype = $anatomy_fn->Phenotype;
           $anatomy_fn_data{'anatomy_fn'} = $self->_pack_obj($anatomy_fn);
-          $anatomy_fn_data{'phenotype'} = $self->_pack_obj($afn_phenotype, $afn_phenotype->Primary_name); #$phenotype_prime_name;
+          $anatomy_fn_data{'phenotype'} = $self->_pack_obj($afn_phenotype); #$phenotype_prime_name;
           my @afn_bodyparts = $afn_bodypart_set->col if $afn_bodypart_set;
           my @ao_terms;
           foreach my $afn_bodypart (@afn_bodyparts){

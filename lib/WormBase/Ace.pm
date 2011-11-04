@@ -5,6 +5,8 @@ use warnings;
 
 use parent 'Ace';
 
+use constant USE_OPTIMIZED_METHODS => 0; # caveat emptor
+
 =over
 
 =item raw_fetch(I<$object>, I<$tag>)
@@ -50,10 +52,10 @@ significantly slower than the simple pattern.
     sub raw_fetch {
         my ($self, $object, $tag) = @_;
 
-        # uncomment the following if separate optimized methods exist
-        # # run the optimized/correct method if possible
-        # my $raw_fetch_alt = "raw_fetch_\l$tag";
-        # return $self->$raw_fetch_alt($object) if $self->can($raw_fetch_alt);
+        if (USE_OPTIMIZED_METHODS) {
+            my $raw_fetch_alt = "raw_fetch_\l$tag";
+            return $self->$raw_fetch_alt($object) if $self->can($raw_fetch_alt);
+        }
 
         my $regex = $PATTERN_CACHE{$tag} //= qr/^$tag\s+"([^"]+)"/m;
 

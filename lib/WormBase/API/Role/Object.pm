@@ -2023,14 +2023,16 @@ sub _pack_objects {
 }
 
 sub _pack_obj {
-    my ($self, $object, $label, %args) = @_;
-    return undef unless $object; # this method shouldn't expect a list.
+    my ($self, $object, $label, $class, $taxonomy) = @_;
+    defined $object or return undef; # caller should not expect list
+
+    die 'Fixme' if (@_ > 5); # no longer support extra args
+
     return {
-        id       => "$object",
-        label    => $label // $self->_make_common_name($object),
-        class    => $object->class,
-        taxonomy => $self->_parsed_species($object),
-        %args,
+        id       => (ref $object && $object->name) || $object,
+        label    => $label   // $self->_make_common_name($object),
+        class    => $class   // $object->class,
+        taxonomy => $taxonomy // $self->_parsed_species($object),
     };
 }
 
