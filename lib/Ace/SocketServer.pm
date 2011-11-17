@@ -6,6 +6,7 @@ use Carp 'croak','cluck';
 use Ace qw(rearrange STATUS_WAITING STATUS_PENDING STATUS_ERROR);
 use IO::Socket;
 use Digest::MD5 'md5_hex';
+use Coro::Socket;
 
 use vars '$VERSION';
 $VERSION = '1.01';
@@ -39,6 +40,7 @@ sub connect {
   $timeout ||= DEFAULT_TIMEOUT;
   my $s = IO::Socket::INET->new("$host:$port") || 
     return _error("Couldn't establish connection");
+  $s = Coro::Socket->new_from_fh($s);
   my $self = bless { socket    => $s,
 		     client_id => 0,  # client ID provided by server
 		     timeout   => $timeout,
@@ -86,7 +88,7 @@ sub read {
 
   if ($self->{timeout}) {
       my $rdr = '';
-      vec($rdr,fileno($self->{socket}),1) = 1;
+      vec($rdr,$self->{socket}->fileno,1) = 1;
       my $result = select($rdr,undef,undef,$self->{timeout});
       return _error("Query timed out") unless $result;
   }
@@ -164,7 +166,7 @@ sub _send_msg {
     $request = $msg eq "encore\0" ? ACESERV_MSGENCORE : ACESERV_MSGREQ;
   }
   my $header  = pack HEADER,WORDORDER_MAGIC,length($msg),0,$self->{client_id},0,$request;
-  print $sock $header,$msg;
+  $sock->print($header, $msg);
 }
 
 sub _recv_msg {
@@ -172,7 +174,7 @@ sub _recv_msg {
   my $strip_null = shift;
   return unless my $sock = $self->{socket};
   my ($header,$body);
-  my $bytes = CORE::read($sock,$header,HEADER_LEN);
+  my $bytes = $sock->read($header, HEADER_LEN);
   unless ($bytes > 0) {
     $self->{status} = STATUS_ERROR;
     return _error("Connection closed by remote server: $!");
@@ -183,7 +185,7 @@ sub _recv_msg {
   $self->{last_msg} = $msg;
   if ($length > 0) {
     return _error("read of body failed: $!" ) 
-      unless CORE::read($sock,$body,$length);
+      unless $sock->read($body, $length);
     $body =~ s/\0*$// if defined($strip_null) && $strip_null;
     return ($msg,$body);
   } else {
