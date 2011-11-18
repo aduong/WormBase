@@ -8,13 +8,15 @@ use Getopt::Long;
 
 my %VALID_ACETYPES = map { $_ => 1 } qw(Ace Ace::Couch);
 
-my ($ACETYPE, $MAX_WORKERS, $PROBABILITY, $RUNS);
+my ($ACETYPE, $MIN_WORKERS, $MAX_WORKERS, $PROBABILITY, $RUNS);
 GetOptions(
     'acetype=s'     => \$ACETYPE,
     'runs=i'        => \$RUNS,
+    'minworkers=i'  => \$MIN_WORKERS,
     'maxworkers=i'  => \$MAX_WORKERS,
     'probability=f' => \$PROBABILITY,
 );
+$MIN_WORKERS //= 1;
 
 die '--acetype must be ', join(' or ', keys %VALID_ACETYPES)
     unless $ACETYPE && $VALID_ACETYPES{$ACETYPE};
@@ -25,6 +27,9 @@ die '--probability must be positive, floating point number'
 die '--maxworkers must be positive integer'
     unless $MAX_WORKERS && $MAX_WORKERS > 0;
 
+die '--minworkers must be a positive integer'
+    unless $MIN_WORKERS > 0;
+
 die '--runs must be positive integer'
     unless $RUNS && $RUNS > 0;
 
@@ -34,7 +39,7 @@ my @list = <>; # we need the whole list
 my $cmd = './concurrent.pl';
 $cmd   .= ' --couch' if $ACETYPE eq 'Ace::Couch';
 
-for my $workers (1..$MAX_WORKERS) {
+for my $workers ($MIN_WORKERS..$MAX_WORKERS) {
     for my $run (1..$RUNS) {
         my $logname = join('_', $ACETYPE, 'p'.$PROBABILITY,
                            'w'. $workers, 'x'.$run) . '.log';
