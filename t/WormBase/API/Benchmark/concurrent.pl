@@ -60,7 +60,7 @@ sub do_work {
     my $reqs = shift;
 
     chdir ROOT.'/t';
-    my ($api, $conf_hash) = WormBase::Test::API->build_api('../wormbase.conf', 'data/conf/test.conf')
+    my ($api, $conf_hash) = WormBase::Test::API->build_api('../wormbase.conf', 'data/conf/benchmark.conf')
         or die "Cannot get API\n";
     $api->log->info(0); # need this to get the fh before chdir
     chdir $Bin;
