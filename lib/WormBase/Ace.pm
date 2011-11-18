@@ -3,7 +3,7 @@ package WormBase::Ace;
 use strict;
 use warnings;
 
-use parent 'Ace';
+use parent 'Ace::Couch';
 
 use constant USE_OPTIMIZED_METHODS => 0; # caveat emptor
 

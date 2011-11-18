@@ -29,8 +29,13 @@ GetOptions(
 $WORKERS  //= 5;
 $LOGNAME  //= "$$.log";
 
-if ($COUCH and ! WormBase::Ace->isa('Ace::Couch')) {
-    die "WormBase::Ace does not extend Ace::Couch. Cannot proceed.\n";
+if ($COUCH) {
+    die "WormBase::Ace does NOT extend Ace::Couch. Cannot proceed.\n"
+        unless WormBase::Ace->isa('Ace::Couch');
+}
+else {
+    die "WormBase::Ace extends Ace::Couch. Cannot proceed.\n"
+        if WormBase::Ace->isa('Ace::Couch');
 }
 
 my $pm = Parallel::ForkManager->new($WORKERS);
