@@ -40,10 +40,10 @@ sub connect {
   $timeout ||= DEFAULT_TIMEOUT;
   my $s = IO::Socket::INET->new("$host:$port") || 
     return _error("Couldn't establish connection");
-  $s = Coro::Socket->new_from_fh($s);
+  $s = Coro::Socket->new_from_fh($s, timeout => $timeout);
   my $self = bless { socket    => $s,
 		     client_id => 0,  # client ID provided by server
-		     timeout   => $timeout,
+#		     timeout   => $timeout,
 		   },$class;
   return unless $self->_handshake($user,$pass);
   $self->{status} = STATUS_WAITING;
@@ -84,14 +84,6 @@ sub read {
   my $self = shift;
   return _error("No pending query") unless $self->status == STATUS_PENDING;
   $self->_do_encore || return if $self->encore;
-  # call select() here to time out
-
-  if ($self->{timeout}) {
-      my $rdr = '';
-      vec($rdr,$self->{socket}->fileno,1) = 1;
-      my $result = select($rdr,undef,undef,$self->{timeout});
-      return _error("Query timed out") unless $result;
-  }
 
   my ($msg,$body) = $self->_recv_msg;
   return unless defined $msg;
@@ -174,7 +166,7 @@ sub _recv_msg {
   my $strip_null = shift;
   return unless my $sock = $self->{socket};
   my ($header,$body);
-  my $bytes = $sock->read($header, HEADER_LEN);
+  my $bytes = $sock->sysread($header, HEADER_LEN);
   unless ($bytes > 0) {
     $self->{status} = STATUS_ERROR;
     return _error("Connection closed by remote server: $!");
@@ -185,7 +177,7 @@ sub _recv_msg {
   $self->{last_msg} = $msg;
   if ($length > 0) {
     return _error("read of body failed: $!" ) 
-      unless $sock->read($body, $length);
+      unless $sock->sysread($body, $length);
     $body =~ s/\0*$// if defined($strip_null) && $strip_null;
     return ($msg,$body);
   } else {
