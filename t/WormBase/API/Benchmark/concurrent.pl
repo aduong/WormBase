@@ -15,27 +15,28 @@ use Time::HiRes qw(time);
 use Fcntl qw(:flock);
 use Getopt::Long;
 use WormBase::Test::API;
+use WormBase::Ace;
 
 use constant DEBUG              => 1;
-use constant MAX_JOBS_PER_REQ   => 5;
 use constant MAX_REQS_PER_CHILD => 10;
 
-BEGIN {
-    die "The number of jobs per requests exceeds the maximum number of requests\n",
-        "servable in a child's lifetime\n"
-    if MAX_JOBS_PER_REQ > MAX_REQS_PER_CHILD;
-}
+my ($WORKERS, $LOGNAME, $COUCH);
+GetOptions(
+    'workers=i' => \$WORKERS,
+    'logfile=s' => \$LOGNAME,
+    'couch'     => \$COUCH,
+);
+$WORKERS  //= 5;
+$LOGNAME  //= "$$.log";
 
-my $WORKERS = 5;
-GetOptions('workers=i' => \$WORKERS);
+if ($COUCH and ! WormBase::Ace->isa('Ace::Couch')) {
+    die "WormBase::Ace does not extend Ace::Couch. Cannot proceed.\n";
+}
 
 my $pm = Parallel::ForkManager->new($WORKERS);
 
-my $logfh;
-if (DEBUG) {
-    open $logfh, '>', "$$.log"; # shared
-    $logfh->autoflush;
-}
+open my $logfh, '>', $LOGNAME; # shared
+$logfh->autoflush;
 
 while () {
     my @reqs;
@@ -70,8 +71,7 @@ sub do_work {
     for my $req (@$reqs) {
         my ($class, $name) = @$req;
 
-        if (DEBUG) {
-            flock $logfh, LOCK_EX;
+        if (flock $logfh, LOCK_EX) {
             print {$logfh} $$, "; Fetching $class => $name\n";
         }
 
@@ -87,14 +87,12 @@ sub do_work {
             }
             my $t1 = time;
 
-            if (DEBUG) {
-                flock $logfh, LOCK_EX;
+            if (flock $logfh, LOCK_EX) {
                 print {$logfh} $$, "; Fetched $class => $name\n";
                 print {$logfh} $$, '; time: ', $t1 - $t0, "\n";
             }
         }
-        elsif (DEBUG) {
-            flock $logfh, LOCK_EX;
+        elsif (flock $logfh, LOCK_EX) {
             print {$logfh} $$, "; failed to fetch $class => $name\n";
         }
     }
@@ -102,11 +100,6 @@ sub do_work {
     debug($$, "; child dying\n");
 }
 
-
-sub min {
-    return $_[0] < $_[1] ? $_[0] : $_[1];
-}
-
 sub debug {
-    print STDERR '[', time, '] ', @_;
+    print STDERR '[', time, '] ', @_ if DEBUG;
 }
